@@ -1,3 +1,7 @@
+# Survey for Young People
+
+
+
 # The-three-Fs-of-online-banking-Fabricated-Financial-Fraud
 Synthetic Financial Fraud Detection Using R
 
@@ -7,24 +11,34 @@ Paysim synthetic dataset of mobile money transactions. Each step represents an h
 We present a synthetic dataset generated using the simulator called PaySim as an approach to such a problem. PaySim uses aggregated data from the private dataset to generate a synthetic dataset that resembles the normal operation of transactions and injects malicious behaviour to later evaluate the performance of fraud detection methods.
 
 ### DATA DICTIONARY
+| Column Name | Description | Data Type |
+| --- | --- | --- |
+| I enjoy listening to music |  Strongly disagree 1-2-3-4-5 Strongly agree | (integer)
 
-*	step - Maps a unit of time in the real world. In this case 1 step is 1 hour of time.
-*	type - CASH-IN, CASH-OUT, DEBIT, PAYMENT and TRANSFER
-*	amount - amount of the transaction in local currency
-*	nameOrig - customer who started the transaction
-*	oldbalanceOrg - initial balance before the transaction
-*	newbalanceOrig - customer's balance after the transaction.
-*	nameDest - recipient ID of the transaction.
-*	oldbalanceDest - initial recipient balance before the transaction.
-*	newbalanceDest - recipient's balance after the transaction.
-*	isFraud - identifies a fraudulent transaction (1) and non fraudulent (0)
-*	isFlaggedFraud - flags illegal attempts to transfer more than 200.000 in a single transaction.
+I prefer.: Slow paced music 1-2-3-4-5 Fast paced music (integer)
+Dance, Disco, Funk: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Folk music: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Country: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Classical: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Musicals: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Pop: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Rock: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Metal, Hard rock: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Punk: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Hip hop, Rap: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Reggae, Ska: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Swing, Jazz: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Rock n Roll: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Alternative music: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Latin: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Techno, Trance: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
+Opera: Don't enjoy at all 1-2-3-4-5 Enjoy very much (integer)
 
 ### The Dimensions of the Data Set are : "1048576 Rows and 11 Columns".
 
 
 ### PROBLEM STATEMENT
-##### How can we regulate in case the attribute "isFlaggedFraud" gets set or not ?
+##### Analyzing the role of gender in various creative activities such as music, hobbies etc by using surveyed data of over an year.
 
 ### TEAM MEMBERS
 * Ashwini Gore
