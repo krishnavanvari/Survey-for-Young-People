@@ -180,7 +180,7 @@
 | 149 |I spent most of my childhood in a: |  City - village  | (categorical) | 
 | 150 |I lived most of my childhood in a: |  house/bungalow - block of flats  | (categorical) | 
 
-### The Dimensions of the Data Set are : "10411 Rows and 150 Columns".
+### The Dimensions of the Data Set are : "1011 Rows and 150 Columns".
 
 
 ### PROBLEM STATEMENT
