@@ -1,5 +1,20 @@
-# Survey for Young People
+# SURVEY OF YOUNG PEOPLE
+Using R we will carry out the survey for the young people
 
+### Introduction
+This Project aims at predicting behaviour patterns in young people. The Young People Survey dataset is a survey conducted in the United Kingdom.The dataset is divided into 2 data files.
+- The survey was presented to participants in both electronic and written form.
+- The original questionnaire was in Slovak language and was later translated into English.
+- All participants were of Slovakian nationality, aged between 15-30.
+- The variables can be split into the following groups:
+     - Music preferences (19 items)
+     - Movie preferences (12 items)
+     - Hobbies & interests (32 items)
+     - Phobias (10 items)
+     - Health habits (3 items)
+     - Personality traits, views on life, & opinions (57 items)
+     - Spending habits (7 items)
+     - Demographics (10 items)
 
 ### DATA DICTIONARY
 
@@ -187,9 +202,9 @@
 ##### Analyzing the role of gender in various creative activities such as music, hobbies etc by using surveyed data of over an year.
 
 ### TEAM MEMBERS
-* Ashwini Gore
-* Ayushi Arora
-* Krishna Vanvari
+[Ashwini Gore] (https://github.com/ayushiarora)
+[Ayushi Arora] (https://github.com/ashwinigore9070)
+[Krishna Vanvari] (https://github.com/krishnavanvari)
 
 ### GITHUB PROFILE 
 * https://github.com/ayushiarora
