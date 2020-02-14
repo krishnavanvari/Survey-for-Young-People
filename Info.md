@@ -202,9 +202,10 @@ This Project aims at predicting behaviour patterns in young people. The Young Pe
 ##### Analyzing the role of gender in various creative activities such as music, hobbies etc by using surveyed data of over an year.
 
 ### TEAM MEMBERS
-[Ashwini Gore] (https://github.com/ayushiarora)
-[Ayushi Arora] (https://github.com/ashwinigore9070)
-[Krishna Vanvari] (https://github.com/krishnavanvari)
+
+ - [Ashwini Gore](https://github.com/ayushiarora)
+ -[Ayushi Arora](https://github.com/ashwinigore9070)
+ -[Krishna Vanvari](https://github.com/krishnavanvari)
 
 ### GITHUB PROFILE 
 * https://github.com/ayushiarora
