@@ -203,6 +203,6 @@ This Project aims at predicting behaviour patterns in young people. The Young Pe
 
 ### TEAM MEMBERS
 
-* [Ashwini Gore](https://github.com/ayushiarora)
-* [Ayushi Arora](https://github.com/ashwinigore9070)
+* [Ashwini Gore](https://github.com/ashwinigore9070)
+* [Ayushi Arora](https://github.com/ayushiarora)
 * [Krishna Vanvari](https://github.com/krishnavanvari)
