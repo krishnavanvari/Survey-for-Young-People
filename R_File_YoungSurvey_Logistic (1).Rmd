@@ -1,0 +1,1291 @@
+---
+title: "R_File_Young_Survey"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r}
+data <- read.csv("G:/Rutgers/MVA/Project/responses.csv")
+View(data)
+
+
+```
+
+
+```{r}
+# The structure of the datasets
+dim(data)
+```
+```{r}
+## Separate out numeric variables and categoric variables
+data_cat <- data[,sapply(data, is.factor)]
+data_num <- data[,!sapply(data, is.factor)]
+dim(data_cat) # 11 features
+dim(data_num) # 139 features
+```
+
+```{r}
+# Grouping of columns accoring to the preferences
+music_data = data[,1:19]
+movie_data = data[,20:31]
+hobbies_data = data[,32:63]
+phobia_data =  data[,64:73]
+health_data = data[,74:76]
+traits_data = data[,77:133]
+spend_data = data[,134:140]
+demo_data = data[,141:150]
+```
+
+MISSING VALUES ANALYSIS
+
+```{r}
+
+sum(is.na(data))
+
+```
+
+
+```{r}
+colSums(is.na(data)) #suming the na values as per the column level
+```
+
+```{r}
+
+# Finding missing values with more than 1%
+# Create a function
+pMiss <- function(x){sum(is.na(x))/length(x)*100}
+
+```
+```{r}
+perc_cat <- apply(data_cat, 2, pMiss)
+perc_num <- apply(data_num, 2, pMiss)
+perc_cat # this shows the percentage of missing value in the categorial data sat
+```
+
+
+```{r}
+# this shows the percentage of missing value in the numerical data
+perc_num
+```
+
+IMPUTE MISSING VALUES : Imputation based on predictive method using features
+
+```{r}
+# Numeric variable imputation
+library(mice)
+# methods(mice)
+
+impu_num = mice(data_num, m=1, method = 'pmm', maxit = 1, seed = 200)
+# summary(impu_num)
+impu_num$imp$Age # Imputed data at each iterations
+impu_num$imp$Weight
+```
+
+
+Parameters: 'pmm' - predictive mean matching method m=5 - no.of multiple imputed datasets maxit = 10 - no.of iterations The computational time is dependent on the 'maxit' - for me it took more than 20 min
+
+
+```{r}
+# Get the numeirc imputed data
+impu_num_compl = complete(impu_num,action = 1)
+```
+
+Imputing categorical missing variables
+```{r}
+impu_cat = mice(data_cat, m=5, maxit = 10, seed = 200, method = 'pmm')
+```
+
+```{r}
+# Get categoric imputed data
+impu_cat_compl = complete(impu_cat, 1)
+```
+
+```{r}
+sum(is.na(impu_num_compl)) # No missing values
+sum(is.na(impu_cat_compl)) # No missing values
+```
+
+Outlier detection:
+```{r}
+library(outliers)
+```
+
+```{r}
+outlier(data_num)
+```
+
+Demographic category - Height, Weight, Age, No.of siblings have maximum no.of outliers
+
+```{r}
+library(ggplot2)
+```
+
+
+The boxplot.stats function; is a ancillary function that produces statistics for drawing boxplots. It returns among other information a vector stats with five elements: the extreme of the lower whisker, the lower ‘hinge’, the median, the upper ‘hinge’ and the extreme of the upper whisker, the extreme of the whiskers are the adjacent values (last non-missing value, i.e. every value beyond is an outlier.
+
+```{r}
+
+id1 = boxplot.stats(impu_num_compl$Weight)
+
+id1$stats	
+```
+
+```{r}
+id1$stats[1] #The lower adjacent value	
+id1$stats[5] # The upper adjacent value
+```
+
+```{r}
+
+id2 = boxplot.stats(impu_num_compl$Height)
+
+id2$stats[1] #The lower adjacent value	
+id2$stats[5] # The upper adjacent value
+```
+
+```{r}
+
+id3 = boxplot.stats(impu_num_compl$Age)
+
+id3$stats[1] #The lower adjacent value	
+id3$stats[5] # The upper adjacent value
+```
+
+```{r}
+
+id4 = boxplot.stats(impu_num_compl$Number.of.siblings)
+
+id4$stats[1] #The lower adjacent value	
+id4$stats[5] # The upper adjacent value
+```
+
+
+```{r}
+
+# Boxplot
+par(mfrow=c(1,2))
+boxplot(impu_num_compl$Weight, main = 'Outliers in Weight', ylab = 'Weight')
+boxplot(impu_num_compl$Height, main = 'Otliers in Height', ylab = 'Height')
+```
+
+```{r}
+boxplot(impu_num_compl$Age, main = 'Outliers in Age', ylab = 'Age')
+
+```
+
+```{r}
+boxplot(impu_num_compl$Number.of.siblings , main = 'Otliers in Number.of.siblings', ylab  ='Number.of.siblings')
+```
+
+```{r}
+# You can get the actual values of the outliers with this
+
+boxplot(impu_num_compl$Weight, plot=FALSE)$out
+```
+
+```{r}
+boxplot(impu_num_compl$Height, plot=FALSE)$out
+```
+
+```{r}
+# no of rows having outliers
+Outlier_height = boxplot(impu_num_compl$Height, plot=FALSE)$out
+impu_num_compl[which(impu_num_compl$Height %in% Outlier_height),]
+```
+
+```{r}
+outlier_siblings = boxplot(impu_num_compl$Number.of.siblings, plot=FALSE)$out
+impu_num_compl[which(impu_num_compl$Number.of.siblings %in% outlier_siblings),]
+```
+
+```{r}
+# Function for outlier treatment
+# Capping and Flooring function
+treat_outlier <- function(x){
+  qnt <- quantile(x, probs=c(.25, .75), na.rm = T)
+  caps <- quantile(x, probs=c(.05, .95), na.rm = T)
+  H <- 1.5 * IQR(x, na.rm = T)
+  x[x < (qnt[1] - H)]  <- caps[1]
+  x[x > (qnt[2] + H)] <- caps[2]
+  return(as.data.frame(x))
+}
+
+impu_num_compl$Age <- treat_outlier(impu_num_compl$Age)$x
+impu_num_compl$Height <- treat_outlier(impu_num_compl$Height)$x
+impu_num_compl$Weight <- treat_outlier(impu_num_compl$Weight)$x
+```
+
+
+```{r}
+dim(impu_num_compl)
+dim(impu_cat_compl)
+```
+
+```{r}
+boxplot(impu_num_compl$Height)
+boxplot(impu_num_compl$Weight)
+```
+
+```{r}
+data_transformed = cbind(impu_num_compl, impu_cat_compl)
+dim(data_transformed)
+```
+
+
+Corelation Analysis:
+
+```{r}
+data_num_trans <- data_transformed[,!sapply(data_transformed, is.factor)]
+dim(data_num_trans)
+```
+
+
+```{r}
+music_trans = data_transformed[,names(music_data)]
+dim(music_trans)
+
+```
+
+```{r}
+library(corrgram)
+corrgram(music_trans)
+```
+
+```{r}
+library(corrplot)
+```
+
+```{r}
+music_cor = cor(music_trans)
+corrplot(music_cor)
+```
+
+
+
+```{r}
+movie_trans = data_transformed[,names(movie_data)]
+dim(movie_trans)
+```
+
+```{r}
+movie_cor = cor(movie_trans)
+corrplot(movie_cor,type="upper")
+```
+
+```{r}
+demo_cor <- cor(data_transformed[,c('Age','Weight','Height')])
+corrplot(demo_cor, method="shade", shade.col=NA, tl.col="black", tl.srt=45, tl.cex =0.7)
+```
+
+```{r}
+phobia_cor = cor(data_transformed[,names(phobia_data)])
+corrplot(phobia_cor,type = "lower")
+```
+
+```{r}
+spend_cor = cor(data_transformed[,names(spend_data)])
+corrplot(spend_cor)
+
+```
+
+Heat map
+```{r}
+heatmap(phobia_cor, scale="column", col = terrain.colors(256))
+          
+```
+
+Exploratory Data Analysis
+
+```{r}
+data_transformed$Gender
+a = split(data_transformed$Gender, 3, drop =TRUE)
+
+str(data_transformed$Gender)
+
+```
+```{r}
+library(ggplot2)
+library(gridExtra)
+library(magrittr) # needs to be run every time you start R and want to use %>%
+library(dplyr)
+library(reshape2)
+```
+
+```{r}
+p1 =ggplot(na.omit(data), aes(x=Age)) + geom_bar(fill = "#23b0db") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+                                                                                         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+age = data %>% select(Age) %>% group_by(Age) %>% summarize(count = n()) %>% arrange(desc(count))
+age = tableGrob(as.data.frame(age))
+grid.arrange(p1, head(age, 7), ncol=2)
+
+```
+
+```{r}
+counts <- table(data_transformed$Gender, data_transformed$Music)
+barplot(counts, main="RATING",
+        xlab="Music Rating", ylab = "Count of people", col=c("blue","red"),
+        legend = rownames(counts))
+```
+
+
+```{r}
+counts <- table(data_transformed$Gender, data_transformed$Movies)
+barplot(counts, main="RATING",
+        xlab="Music Rating", ylab = "Count of people", col=c("Yellow","red"),
+        legend = rownames(counts))
+```
+
+```{r}
+#Health
+counts <- table(data_transformed$Health, data_transformed$Gender)
+barplot(counts, main="RATING",
+        xlab="Gender", col=c("purple1","red"),
+        legend = rownames(counts), beside=TRUE)
+
+```
+
+```{r}
+
+#Flying_----- Phobias
+counts <- table(data_transformed$Flying, data_transformed$Gender)
+barplot(counts, main="RATING",
+        xlab="Gender", col=c("#56B4E9","seagreen2"),
+        legend = rownames(counts), beside=TRUE)
+
+```
+```{r}
+
+#Public Speaking-----Phobias
+counts <- table(data_transformed$Public.speaking, data_transformed$Gender)
+barplot(counts, main="RATING",
+        xlab="Gender", col=c("slateblue1","red"),
+        legend = rownames(counts), beside=TRUE)
+
+```
+```{r}
+#Left/Right Handed
+counts <- table(data_transformed$Left...right.handed, data_transformed$Gender)
+barplot(counts, main="RATING",
+        xlab="Gender", col=c("deepskyblue1","red"),
+        legend = rownames(counts), beside=TRUE)
+```
+
+```{r}
+dim(hobbies_data)
+hobbies_transformed <- data_transformed[,names(hobbies_data)]
+hobbies_pca <- prcomp(hobbies_transformed, scale= T)
+names(hobbies_pca)
+#rotation - represents the loadings of each variables on components
+hobbies_pca$rotation
+```
+
+
+```{r}
+# Calculate the variance explaned by each component
+eigen_hobbies <- hobbies_pca$sdev^2
+names(eigen_hobbies) <- paste("PC",1:32,sep="")
+eigen_hobbies
+
+sum_hobbies <- sum(eigen_hobbies)
+sum_hobbies
+
+## Proportion of variance explained by each component
+
+propvar_hobbies <- eigen_hobbies/sum_hobbies
+propvar_hobbies
+
+cumvar_hobbies <- cumsum(propvar_hobbies)
+cumvar_hobbies
+
+matlambdas <- rbind(eigen_hobbies,propvar_hobbies,cumvar_hobbies)
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+round(matlambdas,4)
+
+summary(hobbies_pca)
+```
+
+
+```{r}
+## Plot a biplot to view components on n-dimensional plane
+biplot(hobbies_pca, scale = 0, main = 'Principal componets')
+
+```
+
+
+```{r}
+##scree plot - to identify the elbow point
+plot(propvar_hobbies,xlab = 'Prinicipal component',ylab = 'Proporiton of variance explained',type = 'b', main = 'Prop. of Variance')
+#The optimum number of components are ~ 8 i.e PC1 : PC8
+```
+
+
+```{r}
+# cumulative scree plot
+plot(cumvar_hobbies,xlab = 'Principal component',ylab = 'Cumulative proportion of variance explained',type = 'b', main = 'Cumulative Prop.of Variance')
+#Approx: ~ 75% of the variance is explained by 20 components i.e PC1 to PC20
+
+
+```
+
+
+```{r}
+dim(movie_data)
+movie_transformed <- data_transformed[,names(movie_data)]
+movie_pca <- prcomp(movie_transformed, scale= T)
+names(movie_pca)
+#rotation - represents the loadings of each variables on components
+movie_pca$rotation
+```
+
+
+```{r}
+# Calculate the variance explaned by each component
+eigen_movie <- movie_pca$sdev^2
+names(eigen_movie) <- paste("PC",1:12,sep="")
+eigen_movie
+
+sum_movie <- sum(eigen_movie)
+sum_movie
+
+## Proportion of variance explained by each component
+
+propvar_movie <- eigen_movie/sum_movie
+propvar_movie
+
+cumvar_movie <- cumsum(propvar_movie)
+cumvar_movie
+
+matlambdas_movie <- rbind(eigen_movie,propvar_movie,cumvar_movie)
+rownames(matlambdas_movie) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+round(matlambdas_movie,4)
+
+summary(movie_pca)
+
+```
+```{r}
+## Plot a biplot to view components on n-dimensional plane
+biplot(movie_pca, scale = 0, main = 'Principal componets')
+```
+
+
+```{r}
+##scree plot - to identify the elbow point
+plot(propvar_movie,xlab = 'Prinicipal component',ylab = 'Proporiton of variance explained',type = 'b', main = 'Prop. of Variance')
+#The optimum number of components are ~ 5 i.e PC1 : PC5
+```
+
+
+```{r}
+# cumulative scree plot
+plot(cumvar_movie,xlab = 'Principal component',ylab = 'Cumulative proportion of variance explained',type = 'b', main = 'Cumulative Prop.of Variance')
+#Approx: ~ 75% of the variance is explained by 8 components i.e PC1 to PC8
+```
+
+
+```{r}
+dim(music_data)
+music_transformed <- data_transformed[,names(music_data)]
+music_pca <- prcomp(music_transformed, scale= T)
+names(music_pca)
+#rotation - represents the loadings of each variables on components
+music_pca$rotation
+```
+
+
+```{r}
+# Calculate the variance explaned by each component
+eigen_music <- music_pca$sdev^2
+names(eigen_music) <- paste("PC",1:19,sep="")
+eigen_music
+
+sum_music <- sum(eigen_music)
+sum_music
+
+## Proportion of variance explained by each component
+
+propvar_music <- eigen_music/sum_music
+propvar_music
+
+cumvar_music <- cumsum(propvar_music)
+cumvar_music
+
+matlambdas_music <- rbind(eigen_music,propvar_music,cumvar_music)
+rownames(matlambdas_music) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+round(matlambdas_music,4)
+
+summary(music_pca)
+```
+
+
+```{r}
+## Plot a biplot to view components on n-dimensional plane
+biplot(music_pca, scale = 0, main = 'Principal componets')
+```
+
+
+```{r}
+##scree plot - to identify the elbow point
+plot(propvar_music,xlab = 'Prinicipal component',ylab = 'Proporiton of variance explained',type = 'b', main = 'Prop. of Variance')
+#The optimum number of components are ~ 4 i.e PC1 : PC4
+```
+
+
+```{r}
+# cumulative scree plot
+plot(cumvar_music,xlab = 'Principal component',ylab = 'Cumulative proportion of variance explained',type = 'b', main = 'Cumulative Prop.of Variance')
+#Approx: ~ 75% of the variance is explained by 8 components i.e PC1 to PC8
+
+```
+
+```{r}
+library(cluster)
+```
+
+
+Data Cluster
+
+Movie Preferences Cluster (Hierarcical Clustering)
+
+```{r}
+dim(music_trans)
+```
+
+Given to our variables value is the same dimension, We don’t need to normalize the data and form the cluster fit directly.
+
+
+```{r}
+
+dist.mat5 = music_trans 
+mat5.nn <- hclust(dist(dist.mat5, method = "euclidean"), method = "average")
+plot(mat5.nn, hang=-1,xlab="Object",ylab="Distance",
+     main="Dendrogram. Nearest neighbor linkage")
+```
+
+```{r}
+#use agglomerative hierarchical clustering to cluster
+hc_mod = hclust(dist(music_trans, method = "euclidean"),method = "ward.D")
+plot(hc_mod, hang = -0.01, cex = 0.7)
+```
+I use Ward’s method in this section. Our dataset has a large observations and a lot of variable number, and Ward’s method tends to produce clusters with proper numbers of observations. By the way, it can also be sensitive to outlines. From above tree, I’m not so sure how many cluster number it should be.And I will seek help from function NbClust.
+
+```{r}
+library(NbClust)
+```
+
+
+```{r}
+nb_clust = NbClust(music_trans, distance="euclidean",
+                  min.nc=2, max.nc=15, method="ward.D")
+```
+
+Next step is cut the tree to into different clusters.
+```{r}
+fit_model = cutree(hc_mod, k=3)
+```
+
+```{r}
+plot(hc_mod)
+```
+```{r}
+plot(hc_mod)
+rect.hclust(hc_mod, k= 3, border = "blue")
+```
+```{r}
+#segment inspection
+aggregate(movie_trans, by=list(cluster=fit_model), mean)
+```
+```{r}
+clusplot(movie_trans, fit_model, color=TRUE,labels = 4, lines=0, main ="hclust plot")
+```
+
+The cluster is cut clearly, but as the segment description shows that this cluster is kind of odd. Three groups are umbalance distribution, the first variable, which is general in this topic, has only a value.
+
+K-means cluster
+
+```{r}
+#Decide the number of cluster before starting the K-mean fit form.
+nb_clust2 = NbClust(movie_trans, min.nc=2, max.nc=15, method="kmeans")
+#table(nc2$Best.n[1,])
+
+```
+It’s still 3 with Kmeans.
+
+```{r}
+set.seed(101)
+km_mo <- kmeans(movie_trans, 3)
+aggregate(movie_trans, by=list(cluster=km_mo$cluster), mean)
+```
+```{r}
+clusplot(movie_trans, km_mo$cluster,color=TRUE, shade=TRUE,
+         labels=4, lines=0, main="K-means cluster plot")
+```
+
+According to the kmeans cluster result, I can barely name the three cluster as:
+
+cluster 3: movie enthdusiasts, love all kind of movie except romantic and Fantasy/Fairy tales
+cluster 1: normal movie consumer, focus on romantic, Fantasy/Fairy tales, comedy, and no feeling on horror, thriller, war, and western
+cluster 2: specific kind of movie lover, focus on war, thriller, action
+
+
+
+comparing the three clusters demographics characters:
+```{r}
+demo_trans = data_transformed[,names(demo_data)]
+```
+
+```{r}
+aggregate(demo_trans[,1:4], by = list(km_mo$cluster), mean)
+```
+
+```{r}
+round(prop.table(table(km_mo$cluster, demo_trans$Gender),1),2)
+```
+```{r}
+round(prop.table(table(demo_trans$Education,km_mo$cluster),2),2)
+```
+```{r}
+round(prop.table(table(km_mo$cluster,demo_data$Village...town),1),2)
+```
+```{r}
+round(prop.table(table(km_mo$cluster, demo_trans$House...block.of.flats),1),2)
+```
+
+As you can see, the most difference between them is gender:
+
+cluster 3: movie enthdusiasts are mainly guys
+cluster 1: normal movie consumers are mostly girls
+cluster 2: specific kind of movie lover are more elder but quite equal on gender
+
+
+Factor Analysis
+```{r}
+#hobbies_pca
+#movie_pca
+#music_pca
+eigvec.hobbies<- hobbies_pca$rotation
+```
+
+```{r}
+pcafactors.hobbies<- eigvec.hobbies[,1:4]
+pcafactors.hobbies
+```
+
+```{r}
+unrot.fact.hobbies<- sweep(pcafactors.hobbies,MARGIN=2,hobbies_pca$sdev[1:4],`*`)
+unrot.fact.hobbies
+```
+```{r}
+communalities.hobbies<- rowSums(unrot.fact.hobbies^2)
+communalities.hobbies # 1 - this would be your unique variance
+```
+```{r}
+rot.fact.hobbies<- varimax(unrot.fact.hobbies)
+View(unrot.fact.hobbies)
+rot.fact.hobbies
+```
+
+```{r}
+fact.load.hobbies<- rot.fact.hobbies$loadings[1:9,1:4]
+fact.load.hobbies
+```
+```{r}
+scale.hobbies<- scale(hobbies_transformed[-1])
+scale.hobbies
+#as.matrix(scale.hobbies)%*%fact.load.hobbies%*%solve(t(fact.load.hobbies)%*%fact.load.hobbies)
+```
+```{r}
+library(psych)
+```
+```{r}
+fit.pc.hobbies<- principal(hobbies_transformed[-1], nfactors=4, rotate="varimax")
+fit.pc.hobbies
+round(fit.pc.hobbies$values, 3)
+fit.pc.hobbies$loadings
+```
+```{r}
+# Loadings with more digits
+for (i in c(1,3,2,4)) { print(fit.pc.hobbies$loadings[[1,i]])}
+
+```
+```{r}
+# Communalities
+fit.pc.hobbies$communality
+```
+
+```{r}
+# Rotated factor scores, Notice the columns ordering: RC1, RC3, RC2 and RC4
+fit.pc.hobbies$scores
+
+```
+
+```{r}
+# Play with FA utilities
+
+fa.parallel(hobbies_transformed[-1]) # See factor recommendation
+
+```
+```{r}
+fa.plot(fit.pc.hobbies) # See Correlations within Factors
+
+```
+```{r}
+fa.diagram(fit.pc.hobbies) # Visualize the relationship
+```
+```{r}
+
+vss(hobbies_transformed[-1]) # See Factor recommendations for a simple structure
+```
+
+@Conclusion: The proportion of the total variance for RC1 is about 52% which restores maximum of the total variance.
+Also the components for RC1 contribute to Art exhibition, Theatre, Reading, Writing, Foreign Language, Psychology, Religion, Politics, Musical Instrument, Law and Geography.
+
+```{r}
+#movie_pca
+eigvec.movie<- movie_pca$rotation
+```
+
+```{r}
+pcafactors.movies<- eigvec.movie[,1:4]
+pcafactors.movies
+```
+
+```{r}
+unrot.fact.movies<- sweep(pcafactors.movies,MARGIN=2,movie_pca$sdev[1:4],`*`)
+unrot.fact.movies
+```
+```{r}
+communalities.movies<- rowSums(unrot.fact.movies^2)
+communalities.movies # 1 - this would be your unique variance
+```
+```{r}
+rot.fact.movies<- varimax(unrot.fact.movies)
+View(unrot.fact.movies)
+rot.fact.movies
+```
+
+```{r}
+fact.load.movies<- rot.fact.movies$loadings[1:9,1:4]
+fact.load.movies
+```
+```{r}
+scale.movies<- scale(movie_transformed[-1])
+scale.movies
+#as.matrix(scale.hobbies)%*%fact.load.hobbies%*%solve(t(fact.load.hobbies)%*%fact.load.hobbies)
+```
+
+```{r}
+fit.pc.movies<- principal(movie_transformed[-1], nfactors=4, rotate="varimax")
+fit.pc.movies
+round(fit.pc.movies$values, 3)
+fit.pc.movies$loadings
+```
+```{r}
+# Loadings with more digits
+for (i in c(1,3,2,4)) { print(fit.pc.movies$loadings[[1,i]])}
+
+```
+```{r}
+# Communalities
+fit.pc.movies$communality
+```
+
+```{r}
+# Rotated factor scores, Notice the columns ordering: RC1, RC3, RC2 and RC4
+fit.pc.hobbies$scores
+
+```
+
+```{r}
+# Play with FA utilities
+
+fa.parallel(movie_transformed[-1]) # See factor recommendation
+
+```
+```{r}
+fa.plot(fit.pc.movies) # See Correlations within Factors
+
+```
+```{r}
+fa.diagram(fit.pc.movies) # Visualize the relationship
+```
+```{r}
+
+vss(movie_transformed[-1]) # See Factor recommendations for a simple structure
+```
+@Conclusion : The proportion of the total variance for RC2 is about 85% which restores maximum of the total variance.
+Also the components for RC2 contribute to Animated and Fantasy Fairy tales movies.
+
+```{r}
+
+#music_pca
+eigvec.music<- music_pca$rotation
+```
+
+```{r}
+pcafactors.music<- eigvec.music[,1:4]
+pcafactors.music
+```
+
+```{r}
+unrot.fact.music<- sweep(pcafactors.music,MARGIN=2,music_pca$sdev[1:4],`*`)
+unrot.fact.music
+```
+```{r}
+communalities.music<- rowSums(unrot.fact.music^2)
+communalities.music # 1 - this would be your unique variance
+```
+```{r}
+rot.fact.music<- varimax(unrot.fact.music)
+View(unrot.fact.music)
+rot.fact.music
+```
+
+```{r}
+fact.load.music<- rot.fact.music$loadings[1:9,1:4]
+fact.load.music
+```
+```{r}
+scale.music<- scale(music_transformed[-1])
+scale.music
+#as.matrix(scale.hobbies)%*%fact.load.hobbies%*%solve(t(fact.load.hobbies)%*%fact.load.hobbies)
+```
+
+```{r}
+fit.pc.music<- principal(music_transformed[-1], nfactors=4, rotate="varimax")
+fit.pc.music
+round(fit.pc.music$values, 3)
+fit.pc.music$loadings
+```
+```{r}
+# Loadings with more digits
+for (i in c(1,3,2,4)) { print(fit.pc.music$loadings[[1,i]])}
+
+```
+```{r}
+# Communalities
+fit.pc.music$communality
+```
+
+```{r}
+# Rotated factor scores, Notice the columns ordering: RC1, RC3, RC2 and RC4
+fit.pc.music$scores
+
+```
+
+```{r}
+# Play with FA utilities
+
+fa.parallel(music_transformed[-1]) # See factor recommendation
+
+```
+```{r}
+fa.plot(fit.pc.music) # See Correlations within Factors
+
+```
+```{r}
+fa.diagram(fit.pc.music) # Visualize the relationship
+```
+```{r}
+
+vss(music_transformed[-1]) # See Factor recommendations for a simple structure
+```
+
+@Conclusion : The proportion of the total variance for RC4 is about 61% which restores maximum of the total variance.
+Also the components for RC4 contribute to Techno Trance, Dance, Slow songs or fast songs.
+
+
+
+MultiLinear Regression
+```{r}
+music_transformed
+```
+
+```{r}
+fit = lm(Music~Dance+Folk+Pop+Rock, data= music_transformed)
+summary(fit)
+```
+
+```{r}
+coefficients(fit)
+```
+```{r}
+library(GGally)
+```
+
+```{r}
+ggpairs(data=music_transformed, title="Cars Data")
+```
+
+
+
+```{r}
+confint(fit,level=0.95)
+```
+
+```{r}
+# Predicted Values
+fitted(fit)
+```
+
+```{r}
+residuals(fit)
+```
+
+```{r}
+#Anova Table
+anova(fit) 
+```
+
+```{r}
+vcov(fit)
+```
+
+```{r}
+cov2cor(vcov(fit))
+```
+```{r}
+temp <- influence.measures(fit)
+temp
+#View(temp)
+```
+```{r}
+#diagnostic plots
+plot(fit)
+
+```
+
+```{r}
+library(car)
+# Assessing Outliers
+outlierTest(fit)
+
+```
+
+```{r}
+qqPlot(fit, main="QQ Plot")
+```
+```{r}
+leveragePlots(fit) # leverage plots
+```
+```{r}
+# Influential Observations
+# added variable plots
+avPlots(fit)
+```
+```{r}
+# Cook's D plot
+# identify D values > 4/(n-k-1)
+cutoff <- 4/((nrow(music_transformed)-length(fit$coefficients)-2))
+plot(fit, which=4, cook.levels=cutoff)
+```
+```{r}
+# Influence Plot
+influencePlot(fit, id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+```
+```{r}
+# Normality of Residuals
+# qq plot for studentized resid
+qqPlot(fit, main="QQ Plot")
+```
+```{r}
+# distribution of studentized residuals
+library(MASS)
+sresid <- studres(fit)
+hist(sresid, freq=FALSE,
+     main="Distribution of Studentized Residuals")
+xfit<-seq(min(sresid),max(sresid),length=40)
+yfit<-dnorm(xfit)
+lines(xfit, yfit)
+```
+```{r}
+#Non-constant Error Variance
+# Evaluate homoscedasticity
+# non-constant error variance test
+ncvTest(fit)
+```
+```{r}
+# plot studentized residuals vs. fitted values
+spreadLevelPlot(fit)
+```
+```{r}
+#Multi-collinearity
+# Evaluate Collinearity
+vif(fit) # variance inflation factors
+ #sqrt(vif(fit)) > 2
+```
+```{r}
+
+#Nonlinearity
+# component + residual plot
+crPlots(fit)
+```
+```{r}
+# Ceres plots
+ceresPlots(fit)
+```
+```{r}
+#Non-independence of Errors
+# Test for Autocorrelated Errors
+durbinWatsonTest(fit)
+```
+
+```{r}
+# Global test of model assumptions
+#install.packages("gvlma")
+library(gvlma)
+gvmodel <- gvlma(fit)
+summary(gvmodel)
+fit
+summary(fit)
+```
+```{r}
+fit1 <- fit
+fit2 <- lm(Music~Dance+Folk+Pop, data = music_transformed)
+```
+
+```{r}
+# compare models
+anova(fit1, fit2)
+```
+```{r}
+step <- stepAIC(fit, direction="both")
+step$anova # display results
+```
+
+```{r}
+#install.packages("leaps")
+library(leaps)
+leaps<-regsubsets(Music~Dance+Folk+Pop+Rock+Country,data=music_transformed,nbest=10)
+# view results
+summary(leaps)
+```
+```{r}
+# plot a table of models showing variables in each model.
+# models are ordered by the selection statistic.
+plot(leaps)
+```
+```{r}
+plot(leaps,scale="r2")
+```
+
+
+```{r}
+#subsets(leaps, statistic="rsq")
+```
+
+```{r}
+# All Subsets Regression
+plot(leaps,scale="bic")
+```
+```{r}
+summary(leaps)
+#View(leaps)
+```
+```{r}
+leaps
+```
+```{r}
+coef(leaps,1:5)
+```
+```{r}
+# Calculate Relative Importance for Each Predictor
+#install.packages("relaimpo")
+library(relaimpo)
+calc.relimp(fit,type=c("lmg","last","first","pratt"),rela=TRUE)
+```
+
+```{r}
+# Bootstrap Measures of Relative Importance (1000 samples)
+boot <- boot.relimp(fit, b = 1000, type = c("lmg","last", "first", "pratt"), rank = TRUE,diff = TRUE, rela = TRUE)
+```
+
+
+```{r}
+booteval.relimp(boot) # print result
+```
+```{r}
+plot(booteval.relimp(boot,sort=TRUE)) # plot result
+```
+```{r}
+summary(fit)
+```
+
+
+
+LOGISTIC REGRESSION
+
+```{r}
+demo_trans = data_transformed[,names(demo_data)]
+
+```
+
+```{r}
+sum(is.na(demo_trans))
+```
+
+```{r}
+head(demo_trans)
+```
+
+```{r}
+str(demo_trans)
+```
+
+```{r}
+demo_trans$Gender = as.integer(demo_trans$Gender)
+demo_trans$Gender <- ifelse(test=demo_trans$Gender == 2, yes="Female", no="Male")
+demo_trans$Gender = as.factor(demo_trans$Gender)
+
+demo_trans$Left...right.handed = as.integer(demo_trans$Left...right.handed)  
+demo_trans$Left...right.handed <- ifelse(test=demo_trans$Left...right.handed == 3, yes="left handed", no="right handed")
+demo_trans$Left...right.handed = as.factor(demo_trans$Left...right.handed)
+
+demo_trans$Only.child = as.integer(demo_trans$Only.child)
+demo_trans$Only.child <- ifelse(test=demo_trans$Only.child == 2, yes="no", no="yes")
+demo_trans$Only.child = as.factor(demo_trans$Only.child)
+
+demo_trans$Village...town = as.integer(demo_trans$Village...town)
+demo_trans$Village...town <- ifelse(test=demo_trans$Village...town == 3, yes="city", no="village")
+demo_trans$Village...town = as.factor(demo_trans$Village...town)
+
+demo_trans$House...block.of.flats = as.integer(demo_trans$House...block.of.flats)
+demo_trans$House...block.of.flats = ifelse(test = demo_trans$House...block.of.flats == 2, yes = "block of flats", no = "house/bungalow")
+demo_trans$House...block.of.flats = as.factor(demo_trans$House...block.of.flats)
+
+str(demo_trans)
+
+```
+
+```{r}
+# Simple Logistic
+logistic_simple <- glm(Left...right.handed ~ Gender, data=demo_trans, family="binomial")
+summary(logistic_simple)
+```
+```{r}
+## Now calculate the overall "Pseudo R-squared" and its p-value
+## NOTE: Since we are doing logistic regression...
+## Null devaiance = 2*(0 - LogLikelihood(null model))
+##               = -2*LogLikihood(null model)
+## Residual deviance = 2*(0 - LogLikelihood(proposed model))
+##                   = -2*LogLikelihood(proposed model)
+
+ll.null <- logistic_simple$null.deviance/-2
+ll.proposed <- logistic_simple$deviance/-2
+ll.null
+ll.proposed
+
+```
+```{r}
+## McFadden's Pseudo R^2 = [ LL(Null) - LL(Proposed) ] / LL(Null)
+(ll.null - ll.proposed) / ll.null
+```
+```{r}
+## chi-square value = 2*(LL(Proposed) - LL(Null))
+## p-value = 1 - pchisq(chi-square value, df = 2-1)
+1 - pchisq(2*(ll.proposed - ll.null), df=1)
+1 - pchisq((logistic_simple$null.deviance - logistic_simple$deviance), df=1)
+```
+
+```{r}
+demo_p =data.frame(probab_demo=logistic_simple$fitted.values,sex=demo_trans$Gender)
+
+
+ggplot(data=demo_p, aes(x=sex, y=probab_demo)) +
+  geom_point(aes(color=sex), size=5) +
+  xlab("Sex") +
+  ylab("Predicted probability ")
+
+```
+```{r}
+## Since there are only two probabilities (one for females and one for males),
+## we can use a table to summarize the predicted probabilities.
+xtabs(~ probab_demo + sex, data=demo_p)
+```
+
+
+
+
+```{r}
+logistic <- glm(Gender ~ Left...right.handed + House...block.of.flats + Village...town + Only.child, data=demo_trans, family="binomial")
+summary(logistic)
+```
+
+```{r}
+## Now calculate the overall "Pseudo R-squared" and its p-value
+ll.null <- logistic$null.deviance/-2
+ll.proposed <- logistic$deviance/-2
+## McFadden's Pseudo R^2 = [ LL(Null) - LL(Proposed) ] / LL(Null)
+(ll.null - ll.proposed) / ll.null
+## The p-value for the R^2
+1 - pchisq(2*(ll.proposed - ll.null), df=(length(logistic$coefficients)-1))
+```
+
+
+```{r}
+## now we can plot the data
+predicted.data <- data.frame(probability.of.hd=logistic$fitted.values,sex=demo_trans$Gender)
+predicted.data <- predicted.data[order(predicted.data$probability.of.hd, decreasing=FALSE),]
+predicted.data$rank <- 1:nrow(predicted.data)
+```
+
+```{r}
+ggplot(data=predicted.data, aes(x=rank, y=probability.of.hd)) +
+  geom_point(aes(color=sex), alpha=1, shape=4, stroke=2) +
+  xlab("Index") +
+  ylab("Predicted probability ")
+```
+
+
+
+
+```{r}
+library(regclass)
+library(caret)
+library(e1071)
+```
+
+```{r}
+confusion_matrix(logistic)
+```
+
+```{r}
+pdata <- predict(logistic_simple,newdata=demo_trans,type="response" )
+pdata
+demo_trans$Gender
+pdataF <- as.factor(ifelse(test=as.numeric(pdata>0.1) == 0, yes="Female", no="Male"))
+pdataF
+
+```
+
+
+
+
+```{r}
+confusionMatrix(factor(pdata,levels = 1:2), factor(demo_trans$Gender,levels = 1:2))
+```
+
+
+@Conclusion: This data set is a numerical data set so; we cannot perform logistic regression on this data. Logistic Regression can be performed on classified data, still, we tried performing logistic regression on our Gender data, the confusion matrix is coming 0, and the AIB is reaching very high which is not significant.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
